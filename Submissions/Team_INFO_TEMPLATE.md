@@ -4,10 +4,9 @@
 
 | Member Name | GitHub Username | Role |
 |--------------|----------------|------|
-| [Full Name] | [@username] | Team Lead |
-| [Full Name] | [@username] | Developer |
-| [Full Name] | [@username] | Designer |
-| [Full Name] | [@username] | [Role] |
+| [Maryam Rashid] | [@maryamrashid0613] | Team Lead |
+| [Saria Nadeem] | [@SariaNadeem] | Developer |
+| [Ayesha Idrees] | [@wannabeayesha] | Developer |
 
 > The **Team Lead** is responsible for forking the repository, creating this folder, and adding all members as collaborators.
 
@@ -29,9 +28,9 @@ Each folder should include the project code and a clear explanation inside it (l
 
 | Project # | Project Title | 
 |------------|----------------|
-| 1 | [Project Title 1] | 
-| 2 | [Project Title 2] | 
-| 3 | [Project Title 3] |
+| 1 | [Ecommerce Store Scenario] | 
+| 2 | [SkillBridge] | 
+| 3 | [ShopEase] |
 
 ---
 
@@ -43,8 +42,8 @@ List the main technologies and tools your team used across all projects.
 Example:
 Frontend: Flutter, React  
 Backend: Spring Boot, Node.js  
-Database: PostgreSQL  
-Other Tools: GitHub, Figma
+Database: MySQL  
+Other Tools: GitHub
 ```
 
 ---
