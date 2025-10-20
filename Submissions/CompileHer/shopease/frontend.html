@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopEase POS & Inventory</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Custom scrollbar for product list */
+        #product-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        #product-list-container::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 4px;
+        }
+        /* Style for low stock warning */
+        .low-stock {
+            border-left: 4px solid #f87171; /* red-400 */
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <header class="bg-indigo-600 p-4 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-white tracking-wider">ShopEase POS</h1>
+            <span id="status-badge" class="px-3 py-1 rounded-full text-xs font-medium text-white bg-red-500">API Status: Loading...</span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-8">
+        <!-- Main POS Grid: Two columns on desktop, stacked on mobile -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Inventory / Product List (Left Column) -->
+            <section class="lg:col-span-2 bg-white rounded-xl shadow-2xl p-6 h-[80vh] flex flex-col">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Inventory & Quick Sale</h2>
+
+                <!-- Search and Filter Bar -->
+                <div class="mb-4 flex flex-col sm:flex-row gap-3">
+                    <input type="text" id="search-input" placeholder="Search by name or SKU..." 
+                           class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-inner">
+                    
+                    <select id="category-filter" 
+                            class="p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-inner sm:w-1/3">
+                        <option value="">All Categories</option>
+                        <!-- Categories will be injected here -->
+                    </select>
+                </div>
+
+                <!-- Product List Container -->
+                <div id="product-list-container" class="flex-grow overflow-y-auto pr-2 space-y-3">
+                    <!-- Products will be dynamically loaded here -->
+                    <p id="loading-message" class="text-center text-gray-500 mt-10">Loading inventory data...</p>
+                </div>
+            </section>
+
+            <!-- Checkout / Cart (Right Column) -->
+            <section class="lg:col-span-1 bg-white rounded-xl shadow-2xl p-6 flex flex-col">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Sales Cart</h2>
+                
+                <!-- Placeholder for Cart Items -->
+                <div id="cart-container" class="flex-grow border-t border-b border-gray-200 py-4 mb-4 space-y-3 overflow-y-auto">
+                    <div class="text-center text-gray-500 mt-8 p-4 bg-indigo-50 rounded-lg">
+                        Click on a product to add it to the cart!
+                    </div>
+                </div>
+
+                <!-- Totals and Checkout Button -->
+                <div class="space-y-3 mt-auto">
+                    <div class="flex justify-between text-lg font-medium text-gray-700">
+                        <span>Subtotal:</span>
+                        <span>$0.00</span>
+                    </div>
+                    <div class="flex justify-between text-xl font-bold text-gray-900 border-t pt-3">
+                        <span>Total:</span>
+                        <span>$0.00</span>
+                    </div>
+                    <button id="checkout-btn" 
+                            class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl transition duration-200 shadow-lg shadow-green-300/50"
+                            disabled>
+                        Process Sale ($0.00)
+                    </button>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        // --- API Configuration ---
+        // IMPORTANT: The Flask backend must be running on this URL for the fetch calls to work.
+        const API_BASE_URL = 'http://127.0.0.1:5000/api'; 
+        
+        let allProducts = [];
+        let categoriesMap = {}; // Map to hold category_id: category_name
+
+        // --- Utility Functions ---
+
+        /**
+         * Simple function to display a custom notification message.
+         */
+        function showNotification(message, isError = false) {
+            const statusBadge = document.getElementById('status-badge');
+            statusBadge.textContent = message;
+            statusBadge.className = statusBadge.className.replace(/bg-(red|green|yellow)-\d00/, isError ? 'bg-red-500' : 'bg-green-500');
+        }
+
+        /**
+         * Checks the API status and updates the badge.
+         */
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/status`);
+                const data = await response.json();
+                if (data.status === 'Running' && data.database === 'OK') {
+                    showNotification('API Status: Ready', false);
+                } else {
+                    showNotification('API Error: DB Issue', true);
+                }
+            } catch (error) {
+                console.error("API Connection Error:", error);
+                showNotification('API Status: Disconnected (Is Flask running?)', true);
+            }
+        }
+
+        // --- Data Fetching ---
+
+        async function loadCategories() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/categories`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const select = document.getElementById('category-filter');
+                    result.data.forEach(cat => {
+                        categoriesMap[cat.category_id] = cat.category_name; // Populate map
+                        const option = document.createElement('option');
+                        option.value = cat.category_id;
+                        option.textContent = cat.category_name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error("Error loading categories:", error);
+                showNotification('Error loading categories', true);
+            }
+        }
+
+        async function loadProducts() {
+            const productListContainer = document.getElementById('product-list-container');
+            productListContainer.innerHTML = ''; // Clear loading message
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/products`);
+                const result = await response.json();
+
+                if (result.success) {
+                    allProducts = result.data;
+                    filterAndRenderProducts(); // Initial render
+                    showNotification(`Inventory Loaded: ${allProducts.length} items`);
+                } else {
+                    productListContainer.innerHTML = `<p class="text-center text-red-500 mt-10">Failed to load products: ${result.message}</p>`;
+                }
+
+            } catch (error) {
+                console.error("Error loading products:", error);
+                productListContainer.innerHTML = `<p class="text-center text-red-500 mt-10">Could not connect to backend API. Please ensure your Python Flask app is running on ${API_BASE_URL.replace('/api', '')}.</p>`;
+            }
+        }
+        
+        // --- Rendering and Filtering ---
+
+        function renderProductCard(product) {
+            const card = document.createElement('div');
+            
+            // Check for low stock condition
+            const isLowStock = product.stock_quantity <= product.low_stock_threshold;
+            
+            card.className = `p-4 bg-gray-50 rounded-xl shadow hover:shadow-lg transition duration-200 cursor-pointer flex justify-between items-center ${isLowStock ? 'low-stock border-red-400' : 'border-l-4 border-indigo-400'}`;
+            card.setAttribute('data-sku', product.sku);
+            card.onclick = () => addToCart(product); // Attach click handler
+
+            card.innerHTML = `
+                <div>
+                    <p class="text-base font-semibold text-gray-800">${product.name}</p>
+                    <p class="text-sm text-gray-500">SKU: ${product.sku} | ${product.category_name}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xl font-bold text-indigo-600">$${product.sell_price.toFixed(2)}</p>
+                    <p class="text-xs ${isLowStock ? 'text-red-500 font-bold' : 'text-green-600'}">
+                        Stock: ${product.stock_quantity}
+                    </p>
+                </div>
+            `;
+            return card;
+        }
+
+        function filterAndRenderProducts() {
+            const searchValue = document.getElementById('search-input').value.toLowerCase();
+            const categoryId = document.getElementById('category-filter').value;
+            const productListContainer = document.getElementById('product-list-container');
+            productListContainer.innerHTML = '';
+
+            const filteredProducts = allProducts.filter(product => {
+                const matchesSearch = product.name.toLowerCase().includes(searchValue) || 
+                                      product.sku.toLowerCase().includes(searchValue);
+                
+                const matchesCategory = !categoryId || 
+                                        product.category_id.toString() === categoryId;
+                
+                return matchesSearch && matchesCategory;
+            });
+            
+            if (filteredProducts.length === 0) {
+                productListContainer.innerHTML = `<p class="text-center text-gray-500 mt-10">No products match your criteria.</p>`;
+            } else {
+                filteredProducts.forEach(product => {
+                    productListContainer.appendChild(renderProductCard(product));
+                });
+            }
+        }
+        
+        // --- Cart/Sale Logic (Placeholder for next steps) ---
+        
+        function addToCart(product) {
+            // This is a placeholder for actual cart functionality
+            showNotification(`Added ${product.name} to cart! (Next feature to build)`, false);
+            
+            // Update the cart container visually (placeholder)
+            const cartContainer = document.getElementById('cart-container');
+            const item = document.createElement('div');
+            item.className = 'p-2 bg-white border border-gray-200 rounded-lg flex justify-between items-center shadow-sm';
+            item.innerHTML = `
+                <span class="text-sm font-medium text-gray-700">${product.name} (x1)</span>
+                <span class="text-base font-semibold text-indigo-600">$${product.sell_price.toFixed(2)}</span>
+            `;
+            cartContainer.prepend(item);
+            
+            document.getElementById('checkout-btn').textContent = 'Process Sale ($799.99)'; // Mock total
+            document.getElementById('checkout-btn').disabled = false;
+        }
+        
+        // --- Initialization ---
+
+        window.onload = function() {
+            // 1. Check if the API is running
+            checkApiStatus();
+            
+            // 2. Load categories for the filter
+            loadCategories();
+
+            // 3. Load all inventory data
+            loadProducts();
+            
+            // 4. Attach event listeners for filtering
+            document.getElementById('search-input').addEventListener('input', filterAndRenderProducts);
+            document.getElementById('category-filter').addEventListener('change', filterAndRenderProducts);
+        };
+
+    </script>
+</body>
+</html>
