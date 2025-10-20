@@ -56,3 +56,4 @@ Other Tools: GitHub, Figma
 ✅ 3 project folders created  
 ✅ All members added as collaborators  
 ✅ PR made to `submission` branch before deadline
+

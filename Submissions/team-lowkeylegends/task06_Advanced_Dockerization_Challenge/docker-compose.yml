@@ -1,0 +1,39 @@
+version: "3.9"
+#this is the app of mine
+services:
+  app:
+    build: .
+    container_name: spring_app
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://db:3306/hackathondb
+      DB_USERNAME: root
+      DB_PASSWORD: root
+# this is the mysql db with persistant storage
+# Note: Initially my spring boot app was running before mysql setup so i added a health check so that this runs after health check of mysql db
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: hackathondb
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysqldata:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # ----------------------------------------
+
+volumes:
+  mysqldata:

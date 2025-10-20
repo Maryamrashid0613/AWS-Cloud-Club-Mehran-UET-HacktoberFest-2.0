@@ -1,0 +1,16 @@
+{
+  "name": "bear-app",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "mongoose": "^8.19.1"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "migrate": "node migrate.js",
+    "seed": "node seed.js"
+  }
+}

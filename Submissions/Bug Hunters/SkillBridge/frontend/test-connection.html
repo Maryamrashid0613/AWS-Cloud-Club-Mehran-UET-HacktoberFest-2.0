@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Connection</title>
+</head>
+<body>
+    <h1>Test Backend Connection</h1>
+    <button onclick="testConnection()">Test Connection</button>
+    <div id="result"></div>
+
+    <script>
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                console.log('Testing connection to http://localhost:5000/api/health');
+                
+                const response = await fetch('http://localhost:5000/api/health');
+                const data = await response.json();
+                
+                console.log('Response:', data);
+                resultDiv.innerHTML = `<pre>✅ Connection successful!<br>${JSON.stringify(data, null, 2)}</pre>`;
+                
+            } catch (error) {
+                console.error('Connection error:', error);
+                resultDiv.innerHTML = `<pre>❌ Connection failed!<br>Error: ${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>
